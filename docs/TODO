@@ -1,0 +1,27 @@
+-Add one other VM instruction: VM_CHARS in order to be able to "see"
+ words with embedded character strings.
+
+-Clean up and document built in primitives in ext_prims.c
+
+-Try to compile on more systems. Windows next, probably.
+
+-Think about moving terminal words into a term.fs
+
+-Clean up and document compilation words.
+
+-Make fgcc compiled files smaller.
+
+-Add better memory dumping words to progs/debug.fs
+
+-Adapt the indirection API to match with the more traditional "defer"
+ API.
+
+-Add a few good forth rants to docs/ :)
+
+-Add a "structures" forth source file and document it.
+
+-Add more about the internal design of locals in the docs/LOCALS
+
+-Add a progs/stack.fs for additional dictionary-based stacks.
+
+-More user-written-programs, especially games!!!

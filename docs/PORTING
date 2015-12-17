@@ -1,0 +1,26 @@
+Frugal Portability
+~~~~~~~~~~~~~~~~~~
+
+Frugal is written in (relatively portable) ANSI C. It will probably run on
+almost all unix systems, and should be portable to windows via cygwin
+and whatnot.
+
+It will run on both big and little endian architectures. It will run on
+both address-aligned systems and non-address-aligned systems.
+
+If you are running on SPARC, you may have to open up the Makefile and
+select the correct CFLAGS variable.
+
+It has sucessfuly been ran on:
+
+OpenBSD/x86 <- Primary development platform
+NetBSD/x86
+Linux/x86
+Linux/macPPC
+Linux/mac68k
+OS X/macPPC
+SunOS/SPARC
+
+
+Please E-Mail me any other OS's you have been able (or not able) to run
+frugal forth on.

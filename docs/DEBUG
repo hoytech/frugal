@@ -1,0 +1,164 @@
+FRUGAL'S INTERACTIVE DEBUGGER
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Frugal offers a powerful debugger. The code for this is kept in the
+file debug.fs, found in the progs/ directory of the standard distribution.
+
+LOADING
+~~~~~~~
+
+Simply include the debugging words. This can be done a variety of ways.
+
+1) Load the code from the command line along with your other files:
+
+frugal my_program.fs progs/debug.fs
+
+
+2) include" the code in your source file:
+
+Add this line to your source file:
+include" progs/debug.fs"
+
+
+3) Load the code when you're in interactive interpret mode inside
+   frugal:
+
+include" progs/debug.fs"
+  ok
+
+
+
+STARTING THE DEBUGGER
+~~~~~~~~~~~~~~~~~~~~~
+
+The debugger itself can be started in 2 ways:
+
+1) When you're in interpret mode, execute the word "debug>" followed
+   by the word you wish to debug:
+
+: my_word 100 40 + 1- ;
+debug> my_word
+
+
+2) Compile the word "debug" into one of your definitions:
+
+: my_word debug 100 40 + 1- ;
+
+Note: The word "debug" can be compiled into the definition at any
+point. It does not have to be at the start of the definition. Wherever
+the word is compiled in, THAT is where execution will break, and the
+debugger will be launched.
+
+Places where you can't use debug:
+
+Words that use local variables.
+
+Words that directly manipulate the return stack, for instance, words that
+use >r and r>. (Actually you can debug these words just as long as you
+don't execute the return stack manipulation words while in debug mode)
+
+Words defined inside a non-linear dictionary (VERY UNUSUAL).
+
+
+
+
+
+USING THE DEBUGGER
+~~~~~~~~~~~~~~~~~~
+
+After the debugger has been started, you will be shown a listing of
+the current definition being debugged. It will show something like this:
+
+DEBUGGING 'my_word':
+> 134577821 : LITERAL: 100
+  134577829 : LITERAL: 40
+  134577837 : +
+  134577841 : 1-
+  134577845 : EXIT
+DATA STACK: < 0 >
+RTRN STACK: < 3 > 134561836 134577821 134578544 [TOP]
+  ok
+
+
+You are now in interpret mode again, so you can do almost anything you
+could do in normal interpret mode: read/write values from variables,
+"see" words, etc. Another useful thing you can do is switch your numeric
+base. Type hex to see the address numbers in hexadecimal, for instance.
+Note that all the literals will also be displayed in hex.
+
+Note: Some words contain string literals. These words' code are not
+displayable by the interactive debugger, although you can still step
+through them and into their words. If you absolutley need to see this
+word, abstract the string literal to a separate word, and call that word
+from inside your original word.
+
+The first line "DEBUGGING 'my_word':" tells you what word you're
+currently debugging.
+
+The numbers represent actual machine instructions followed by the
+code contained at those addresses. The character ">" on the left shows
+the next instruction to be executed.
+
+The "DATA STACK:" line shows a bottom-to-top representation of the data
+stack. The number inside the "<  >" shows how many items are actually in
+the stack. 
+
+The "RTRN STACK:" line is similar to the data stack line, except, obviously,
+it shows the return stack instead of the data stack. The top element
+will always be the return address for the "debug" word, and the element
+below it will always be the current execution location of the word you're
+debugging (The one ">" points to).
+
+
+
+run
+
+This word will exit the debugger, and continue execution at your current
+execution point.
+
+
+step
+
+This word will execute the word at your current execution point. It will
+then resume execution at the subsequent address. When you "step" an
+EXIT instruction, the debugger will exit the debugger and resume execution
+at the word that called your word.
+
+
+fwd
+
+This word will skip the instruction at the current execution point,
+and skip to the subsequent instruction. Note that you cannot skip
+past a word's EXIT.
+
+
+bwd
+
+This word will move the current execution point back 1 instruction,
+and will not execute the current instruction. Note that you cannot
+skip past a word's beginning.
+
+
+into
+
+This word will start a new debugger instance, and start it at the beginning
+of the code of the word at your current execution point. Note: some
+words can not be stepped into:
+
+You cannot step into primitives.
+You cannot step into branch and conditional branch instructions.
+You cannot step into literals.
+
+Of course, all of the above can be stepped over.
+
+As you step into words, you will see both the current execution locations
+and the addresses of your debug execution locations stack up.
+
+
+
+
+I hope you find this debugger as useful and powerful as I do.
+
+Fractal
+doug@hypervivid.com
+www.hcsw.org  -  HardCore SoftWare

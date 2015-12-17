@@ -1,0 +1,43 @@
+HardCore SoftWare's FORTH system: Frugal
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+This program is Copyright 2002 by HardCore Software, and it's
+distribution is protected by the GNU General Public License.
+See the file COPYING for details.
+
+
+This is the Frugal Forth environment. Programming and usage is very
+similar to most Forth environments.
+
+
+Configuration: (PROBABLY OPTIONAL)
+Edit Makefile and uncomment to appropriate configuration line, according to
+your operating system and architecture.
+
+Compilation:
+make
+
+Running:
+./frugal
+
+You can include files on the command line:
+./frugal progs/pong.fs
+
+You can also include files from within the interpreter like so:
+include" progs/pong.fs"
+
+Also, you may want to investigate fgcc, a gcc wrapper for frugal forth
+code that will let you create native, standalone (except for libc)
+applications. Check out docs/FGCC for more details.
+
+See the files in docs/ for more info on programming and implementation.
+See the files in progs/ for example programs written in Frugal and extensions
+ to Frugal's core.
+
+If you write some decent programs in frugal, I would very much like to
+include them in the progs/ directory. Please E-Mail me!
+
+
+Doug Hoyte (Fractal)
+doug@hypervivid.com

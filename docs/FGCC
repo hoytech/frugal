@@ -1,0 +1,75 @@
+FGCC - Frugal GCC Wrapper Program
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+fgcc is a wrapper program that will wrap a forth interpreter and the
+forth code into a simple C file, which can be compiled by a standard
+compliant C compiler, specifically gcc.
+
+fgcc is not a C-to-forth converter, however. Please do not advertise it
+as such.
+
+fgcc can generate direct C code, using the -cgen option, or it can
+compile an executable directly.
+
+fgcc currently does not create especially space-efficient code, but this
+should be remedied shortly.
+
+
+Usage: fgcc [-o file] [-cgen file.c] [-bare] [-q] sources.fs
+       -o file      Output executable filename
+       -cgen file   Generate C code - do not compile
+       -q           Generate "quiet" code
+       -bare        Don't include init.fs
+       -norm        Compile a normal interpreter.
+
+
+-o file      The output executable's filename. If -o is not specified,
+             it defaults to a.out
+
+-cgen file   The output C file's filename. This cannot be combined with
+             -o. You must either make an executable or a C file, not both.
+
+-cc name     Use name as the C compiler instead of gcc.
+
+-q           Suppress the normal introduction message. Make it "quiet".
+
+-bare        Do not include init.fs. This is primarily useful if you want
+             to use your own init.fs, as many standard forth words will not
+             be included by default.
+
+-norm        Only include init.fs. This option effectively does nothing,
+             but in order to compile, you have to have at least 1 arg
+             on the command line. This might as well be it. This is useful
+             for compiling your own "normal" interpreter.
+
+
+
+Examples:
+
+fgcc blah.fs
+
+Creates an executable named "a.out" that natively includes the forth
+code in blah.fs.
+
+
+fgcc -o blah blah.fs
+
+Same thing as above, except the executable is named "blah".
+
+
+fgcc -cgen blah.c blah.fs
+
+Creates a C file named "blah.c" that, when compiled, will create an
+executable that natively includes the forth code in blah.fs.
+
+
+fgcc pong.fs -o pong -q
+
+Creates an executable "pong" that when executed, launches frugal's flagship
+game, "pong".
+
+
+fgcc -norm -o frugal
+
+Creates a frugal interpreter that doesn't depend on the file "init.fs"
+unlike the normal interpreter. 

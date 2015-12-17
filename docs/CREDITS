@@ -1,0 +1,20 @@
+CREDITS
+~~~~~~~
+
+- Doug Hoyte (Canada)
+  Primary author
+
+- Herman Tamas (Hungary)
+  Testing
+  Bug reports
+  A number of good FORTH words in init.fs
+
+- ASau (Russia)
+  Fixed bug in the parse function/word
+
+- Robert Ostling (Sweden)
+  Included his program "tea.fs" in the progs/ directory.
+
+- Herkamire (USA)
+  Submitted endian patch.
+  Submitted terminal bug report.

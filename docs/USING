@@ -1,0 +1,732 @@
+PROGRAMMING FRUGAL
+~~~~~~~~~~~~~~~~~~
+
+
+Frugal is flexible and simple. This guide will go through programming
+for Frugal, providing examples.
+
+
+FOR FORTH BEGINNERS
+* FORTH PHILOSOPHY
+* STACK BASICS
+* DICTIONARY BASICS
+* CONTROL-FLOW PROGRAMMING
+* THE RETURN STACK
+* RECURSION
+* I/O PROGRAMMING
+* NUMBER BASES
+* TERMINAL PROGRAMMING
+
+
+FOR ADVANCED FORTH USERS
+* DEBUGGING
+* COMMAND-LINE KUNG-FOOLERY
+* RANDOM NUMBER GENERATION
+* NUMBER BASES
+* ADDING PRIMITIVES
+* NO DOES> ?
+* INDIRECTION
+
+
+
+
+
+BEGINNER TOPICS
+~~~~~~~~~~~~~~~
+
+
+Forth Philosophy
+~~~~~~~~~~~~~~~~
+
+Forth is a simple foundation for program design, creation, debugging,
+and experimentation. Forth is built around 2 stacks and a heap. The
+first stack, the data stack, is used for passing data between words.
+The other stack, the return stack, is used for storing addresses of
+words between calls.
+
+Almost all programming languages use stacks because they are such
+useful data structures for managing control flow. Some of Forth's
+power comes from the fact that it allows you direct access
+to it's stacks. An excellent feature of Forth is that it boasts 2 stacks,
+instead of the usual 1. Seperating the data passing stack from the
+return stack gives the Forth programmer some powerful abilities that
+can be, and are, frequently exploited.
+
+The heap is used as a long pad for appending data, and is used for a
+variety of purposes, most notably, holding the definitions of words
+themselves.
+
+The latest attempt at standardizing Forth was the ANSI Forth standard.
+It is farily complete, and quite liberal about various implementation
+choices. Frugal is mostly ANSI compliant, but there are some differences,
+and Frugal is not, and probably never will be fully compliant.
+
+
+
+
+
+Stack Basics
+~~~~~~~~~~~~
+
+Frugal, like all Forth, has at it's heart 2 stacks. Becoming proficient
+in Forth depends on becoming proficient at stack usage.
+
+A stack is a "Last-in, First-out" data structure. This means the last
+element you insert (push) will be the first element you remove (pop).
+Think of a stack like a stack of trays at a cafeteria. You must remove
+all the top trays, in reverse order to which they were placed, before you
+can get at the one at the bottom. 
+
+After you start up Frugal, you should see some kind of introduction,
+and the prompt "ok". If you enter a number and press enter, it will
+push that number onto the stack.
+
+You can enter many numbers on the line at once. Typing .s is a good way
+to see the contents of the stack. IE:
+
+343 123 999 .s
+< 3 > 343 123 999 [TOP]  ok
+
+Typing . will remove and print the top number on the stack. Followed by
+a space. IE:
+
+.
+999   ok
+
+
+Forth programmers often represent stacks by "stack diagrams". A stack
+diagram shows numbers on the stack. The furthest right element is usually
+the top, as represented by .s  Usually, stack diagrams show the stack
+before and after an operation, seperated by "--". Stack diagrams are
+enclosed in parentheses. This makes them comments in Forth. More later.
+
+For instance, here's the stack diagram for ".":
+
+( x0 x1 .. xn -- x0 x1 .. xn-1 )
+
+Or more simply,
+
+( x -- )
+
+Notice how the stack diagram doesn't actually show you what the word
+does, just how it modifies the stack.
+
+Here is a listing of many common words that you will definitley find
+useful at some point:
+
+drop
+( x -- )
+Removes the top element from the stack.
+
+swap
+( x y -- y x )
+Swaps the top 2 elements.
+
+rot
+( x y z -- z x y )
+"Rotates" the top 3 elements.
+
+dup
+( x -- x x )
+Duplicates the top element.
+
++
+( x y -- x+y )
+Adds the top 2 elements, and presses the result onto the stack.
+
+-
+( x y -- x-y )
+Subtracts the top 2 elements, and presses the result onto the stack.
+
+=
+( x y -- B )
+Compares the top 2 elements, and if they are equal, presses a non-zero
+value onto the stack. If they aren't, it presses 0 onto the stack.
+
+>  <  <=  >=  <>
+( x y -- B)
+Compares x and y appropriatley.
+
+words
+( -- )
+Prints out all the words currently in the dictionary.
+Don't be alarmed at the sheer number of words you see. You'll pick
+up the words as need be.
+
+(
+( -- )
+Don't process anything in the input streams until you encounter a ")".
+
+
+
+Dictionary Basics
+~~~~~~~~~~~~~~~~~
+
+Everything in Forth is a word or a literal (number). For instance, when
+you type in +, you are executing the word "+". You can define your own
+words using the ":" and ";" words.
+
+The Forth word ":" creates a new word and names it as the next word in the
+"input stream". It then compiles all the following words it sees in
+the "input stream" into the definition until it encounters the word ";".
+
+: 5+ ( x -- 5+x )
+     5 + ;
+
+5+ will now press 5 on the stack and execute the + word. Try it out:
+
+4 5+ .
+9  ok
+
+Words can be any combination of non-white-space characters:
+"9*&Y]{-'-" is a perfectly valid word. So is the word "1", dangerously
+enough. This can be very confusing:
+
+: 1 2 ;
+
+
+Your word, "5+", is a first class word. There is no difference
+between your new words and the system's words. You can reference any
+previously defined words in your colon definition.
+
+Another way you can define words is with the words "var" and "const"
+(AKA "variable" and "constant"). IE:
+
+42 const THE-ANSWER
+
+Then anytime the word THE-ANSWER is executed, 42 is pressed onto the
+stack. It's roughly comparable to:
+
+: THE-ANSWER 42 ;
+
+The "var" word is slightly different.
+
+2002 var THE-DATE
+
+It works similarly, except that when the word THE-ANSWER is executed,
+it pushes the *address* of where that 42 is stored onto the stack.
+Here, we'll introduce 2 more Forth words: "!" and "@". Pronounced
+"Store" and "Fetch", respectively.
+
+@
+( addr -- val )
+This fetches the value stored at "addr", and pushes it onto the stack.
+
+!
+( val addr -- )
+This stores the value "val" into the address "addr".
+
+For example, here's how you use variables:
+
+THE-DATE @ .
+2002   ok
+
+2003 THE-DATE !
+  ok
+
+THE-DATE @ .
+2003   ok
+
+
+A good example of all of these concepts is the Forth word "!+".
+
++!
+( val addr -- )
+Adds the value "val" to the value stored at "addr".
+
+: +! dup @ rot rot + swap ! ;
+
+We'll break this down into steps:
+
+It starts out like this:
+( val-to-add addr )
+
+You execute +!. It executes "dup":
+( val addr addr )
+
+After "@":
+( val addr orig-val )
+
+After "rot" twice:
+( orig-val val-to-add addr )
+( addr orig-val val-to-add )
+
+After "+":
+( addr new-val )
+
+After "swap":
+( new-val addr )
+
+After "!":
+( )
+
+And the word !+ is done.
+
+
+
+
+Control-Flow Programming
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are a few decent control flow processing words in Forth.
+
+The best way to explain them is to go read a decent Forth tutorial. :)
+But I'll show a few examples anyways:
+
+: tp 10 0 do i . loop ; tp
+0 1 2 3 4 5 6 7 8 9   ok
+
+: tp begin key char, q = until ;
+
+tp will stall until the user presses the 'q' key.
+
+: is_0? 0 = if ." YES IT IS!" else ." NOPE, SORRY!" then ;
+  ok
+1 is_0?
+NOPE, SORRY!
+  ok
+
+
+I encourage you to research these Forth words in one of many of
+online tutorials:
+
+if, then, else, do, loop, +loop, begin, until, while, again
+
+
+
+
+
+Return Stack Programming
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The return stack is the other stack in your Forth system. Generally,
+the programmer does not access this directly, and it is only a "bookmark"
+for the system so that it knows where to come back to after executing
+a word. However, the programmer can access the return stack with these
+4 words:
+
+r>
+( -- item-from-rstack )
+Removes the top item from the return stack and puts it on the data stack.
+
+>r
+( n -- )
+Removes the top item from the data stack and puts it on the return stack.
+
+i
+( -- copy-of-item-from-rstack )
+Puts a copy of the top item on the return stack onto the data stack.
+
+j
+( -- copy-of-third-down-item-from-rstack )
+Puts a copy of the 3rd item on the return stack onto the data stack.
+
+
+Sometimes programmers use these words to store values on the return
+stack temporarily. You can too, except always be sure to remove them
+before the word ends.
+
+You may be wondering why i and j are named so. It's because the do
+loop that we talked about in the previous chapter stores 2 values
+on the rstack that correspond to the index and the limit. The i presses
+the current index in the loop onto the data stack. j can be used when you
+have a do loop inside another do loop and you want the outer loop's index.
+
+
+
+
+Recursion
+~~~~~~~~~
+
+Recursion is simply executing a word from itself. Most languages just
+simply get you to use the name of your function/word/procedure as the
+word to execute. Frugal lets you do this too, but it also provides a
+word: recurse
+This word simply compiles a call to the word you are currently defining.
+
+Here's a quick example using the stereotypical recursion example:
+
+: factorial ( n -- !n ) dup 1 > if dup 1- recurse * then ;
+
+As of 0.9.9, frugal now offers a tail recursion word called ";recurse".
+This is different from recurse in that it won't press the current
+execution pointer onto the return stack - It will just branch back to
+the beginning of the word. Here's an example of the previous program
+written tail-recursively:
+
+: fact-aux dup 1 <= if drop
+                    else swap over * swap 1- ;recurse
+                    then ;
+: factorial ( n -- !n ) 1 swap fact-aux ;
+
+Notice that this implementation uses factorial as a "wrapper" for the
+tail-recursive function. Also notice how this implementation is just as
+memory and CPU efficient as an iterative version using, say,
+DO .. LOOP or BEGIN .. UNTIL.
+
+
+
+
+
+I/O Programming
+~~~~~~~~~~~~~~~
+
+printnum
+( n -- )
+Print n onto the terminal.
+
+.
+( n -- )
+Print n onto the terminal, followed by a space.
+
+emit
+( n -- )
+emit the character n.
+
+."
+( -- )
+Parse the input stream until " is encountered. Compile the print
+semantics. Use ONLY inside a colon definition. Example:
+: tp ." Hello world!" ; tp
+Hello world!  ok
+
+.(
+( -- )
+Parse the input stream until ) is encountered. Print that input stream.
+Use ONLY outside a colon definition.
+
+Note: ." must be used inside a colon definition.
+
+accept
+( addr n1 -- n2 )
+Accept at most n1 characters from stdin, and store it at the location
+pointed to by addr. n2 is the actual amount of data accepted. IE:
+
+key
+( -- c )
+Accepts a key from the keyboard and presses it on the stack.
+ONLY USE WHEN THE TERMINAL IS IN NON-RAW MODE!
+
+rawkey
+( -- c )
+Same as key, but
+ONLY USE WHEN THE TERMINAL IS IN RAW MODE!
+
+
+
+Frugal has 2 modes that it can be in. Normal and raw. It starts out
+in normal. You toggle between the 2 using "term-raw-on" and "term-raw-off".
+
+
+
+
+
+Number Bases
+~~~~~~~~~~~~
+
+Like most forths, frugal has a variable called "base". This variable
+controls both the interpretation of new numbers in the input stream,
+and the mask of how they are printed out. Use bases between 2 and 36
+only. YOU HAVE BEEN WARNED!
+
+You can switch between bases either directly by the base variable, or
+by using a set of helpful words:
+
+binary, octal, decimal, hex
+
+Examples:
+
+hex ff decimal .
+255   ok
+
+
+decimal
+26350037 676 591861
+36 base !
+.s
+< 1 > forth is cool [TOP]  ok
+
+
+base ?
+10  ok
+hex base ?
+10  ok
+binary base ?
+10  ok
+
+
+Can you see why "base ?" always prints 10?
+
+In words that have to use a specific number base, it is a good idea
+to save the number base before you define the word, and restore it after
+you've finished defining it.
+
+Example:
+
+base @ hex
+: my-word 8aff8 ;
+base !
+
+
+
+
+
+
+
+Terminal Programming
+~~~~~~~~~~~~~~~~~~~~
+
+Colours: black, red, green, yellow, blue, magenta, cyan, white
+Attributes: restore, bright, dim, underscore, blink, reverse, hidden
+Note: "restore" simply removes all other attributes.
+
+term-fg
+( colour -- )
+Sets the current foreground colour to "colour".
+
+term-bg
+( colour -- )
+Sets the current background colour to "colour".
+
+term-attr
+( attribute -- )
+Turns on the current terminal attribute "attribute".
+
+term-cls
+( -- )
+Clears the screen.
+
+term-xy
+( x y -- )
+Locates the cursor to (x,y).
+
+term-cur-on   term-cur-off
+( -- )
+Turns the cursor display on/off.
+
+term-save   term-unsave
+( -- )
+Saves the terminal settings (colours, attributes, cursor locations).
+Restores the settings to the last saved ones.
+
+
+There are a number of other terminal words. See the file init.fs
+for their definitions.
+
+
+
+
+
+
+ADVANCED TOPICS
+~~~~~~~~~~~~~~~
+
+
+Debugging
+~~~~~~~~~
+
+Frugal offers a powerful interactive debugger. See the file DEBUG
+for loading and usage details.
+
+
+
+
+Command-Line Kung-Foolery
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Frugal supports loading of files and executing of code on the command-line.
+For instance, you can automatically load a file from the command line,
+simply by including the files name and path on the command line.
+
+For example:
+
+frugal progs/pong.fs
+
+
+pong.fs will be executed.
+
+The other usage is if you prefix your arguments with "-". The remainder
+of the argument will be executed. For instance:
+
+frugal '- : tp ." I'M A COMMAND-LINE FORTH NINJA!" cr ; tp '
+
+The code
+
+: tp ." I'M A COMMAND-LINE FORTH NINJA!" cr ; tp
+
+will be executed, just as if you had typed it on the stdin.
+
+All command-line arguments are processed in order from left to right.
+
+For instance, this line:
+
+frugal blah.fs '-.s' debug.fs '-words see blah'
+
+first includes blah.fs, then executes the word ".s", then includes
+debug.fs, then executes "words see blah", which executes the word "words",
+then "see blah".
+
+
+
+
+
+
+
+
+Random Number Generation
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Frugal provides some simple random number generation routines:
+
+rand
+( -- rand-num )
+
+choose
+( max-num -- rand_num )
+
+reseed
+( -- )
+
+rand returns 1 cell full of random bits, and provides some not-very-useful
+numbers like 3984354 and -123324442.
+
+choose is ( max-num -- rand-num )
+
+"10 choose" returns a random number between 0 and 9. Note that choose
+expects a number greater than or equal to 2.
+
+reseed will reseed the random number generator. This is done automatically
+when the system starts.
+
+The supplied random number generator is actually quite poor. Use the
+arc4.fs program in the progs/ directory for much better number generation.
+
+The comments at the top of progs/arc4.fs explain usage of this 
+cryptographically-secure pseudo random number generator.
+
+
+
+
+
+
+
+Adding Primitives
+~~~~~~~~~~~~~~~~~
+
+Adding primitives in Frugal is easy. All adding of primitives should be
+done in the file "exitprims.c".
+
+Open the file up, and add this:
+
+
+NEWPRIM(prim_name) {
+/* INSERT YOUR C CODE HERE. */
+}
+
+
+Then go to the very bottom of the file and add this line inside the function
+external_prims():
+
+
+REGPRIM(prim_name, "forth_word");
+
+
+prim_name can be any alphanumeric legal C function name, so long as it
+doesn't conflict with any other functions.
+forth_word can be any sequence of non-white-space characters less than
+or equal to 31 characters in length.
+
+Recompile, and your word forth_word will be in the dictionary.
+
+You can use the macros push() and pop() for easy access to the data stack
+in your own primitives.
+
+
+
+
+
+
+No DOES> ?
+~~~~~~~~~~
+
+No. Frugal does not use the DOES> word. This is because Frugal does
+not use CFAs (Code Field Addresses) like most Forth. Basically, CFAs
+work like so: Every dictionary entry reserves a cell the points to the
+executable code used to handle the rest of the dictionary entry. Usually
+this is a pointer the colon definition's code, but can also be pointers
+to variable and constant's code.
+
+Frugal, by contrast, assumes that you will always be using the colon
+definition's code. Note that it's still possible to make constants
+and variables. As an example, we show how constant is defined:
+
+: constant create #, , compile-exit ;
+
+constant first "create"s a header, taking data from the input buffer
+at run-time, not compile-time. Next the constant word compiles a
+VM_NUMBER onto the created definition. Next it compiles the number on the
+top of the data stack. Next it compiles the exit code into said word.
+Then constant exits.
+
+So the statement:
+
+666 constant myconst
+
+Might add this to the dictionary:
+
+[ 243443][  0][][][][][][][][]  [     2][666][      1][8888888]
+^        ^    ^                 ^       ^    ^        ^
+link     mode name              vm_num  NUM  vm_prim  code to exit
+
+
+
+
+Indirection
+~~~~~~~~~~~
+
+Indirection is essentially redefining a meaning of a word and changing the
+function of all references to this word, even if it has already been
+compiled into other words.
+
+Here's an example of redefining a word NOT using indirection:
+
+: 1+ ( n -- n+1 )  1 + ;
+: stuff ( n -- n+2 )  1+ 1+ ;
+
+As you can see, stuff adds 2 to it's argument.
+
+Now say we do this:
+
+: 1+ ( n -- n+1 )  2 + ;
+
+stuff still is referenced to the original 1+, and still adds 2, even
+though 1+ now adds 2 to it's args.
+
+That pointless example showed that you can't redefine all the references
+to 1+ without using indirection. Frugal provides 2 words that simplify
+indirection: icreate and iset>. Look up their definition in init.fs to
+see how they work.
+
+Here's how you'd use indirection:
+
+icreate addnum
+
+Right now, addnum is just a NULL definition. It does nothing if you execute it.
+You can "bind" a word to it like so:
+
+: 100+ 100 + ;
+' addnum iset> 100+
+
+addnum now executes 100+. Try it. You can then use addnum in your
+definitions:
+
+: run 100 addnum ." Your number is " . cr ;
+
+run should now yield "Your number is 200".
+
+You can rebind addnum like so:
+: 200+ 200 + ;
+' addnum iset> 200+
+
+Now, without redefining it, run will yield "Your number is 300".
+This is called indirection.

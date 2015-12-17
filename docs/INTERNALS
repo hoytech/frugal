@@ -1,0 +1,175 @@
+UNDERSTANDING FRUGAL
+~~~~~~~~~~~~~~~~~~~~
+
+Frgual is essentially based on the Forth programming language, and is
+mostly source compatible with it. There are, however, a few fundamental
+differences. This document will explain the implementation and internals
+of Frugal.
+
+
+* FUNDAMENTALS
+* EXECUTION
+* ALIGNMENT
+* THE THIRD STACK
+
+
+
+
+FUNDAMENTALS
+~~~~~~~~~~~~
+
+Like most Forths, Frugal is built around 2 stacks and a heap.
+Both stacks are implemented as arrays of (normally) 32 bit elements.
+In the C engine, the stacks are referenced to by 2 pointers each.
+
+The base pointers (st and rst) and the stack pointers (stp and rstp).
+Generally, the stacks are accessed through st_push(), rst_push(),
+st_pop(), and rst_pop() which preform necessary error checking.
+The stack pointer points to the next free cell.
+
+The heap is accessed similarly. heap is the base pointer, and heapp
+is the current pointer. The address heapp points to can be accessed by
+the Forth word "here", and the location of the heapp pointer itself by
+the word "h".
+
+The pointer lastdictp points to the last dictionary entry created. It
+functions as the base of a linked-list that leads back through the heap.
+The location of this ponter can be accessed by the Forth word "l".
+
+There is also a pointer ip, that points to the current cell in the
+dictionary being executed. After executing the instruction there (see
+below) it increments itself by one cell (usually 4 bytes) and resumes
+execution.
+
+
+Here is what a stack may look like:
+
+[90][34][324][3][0][0][0][0][0][0][0][0][0]
+^       ^
+st      stp
+
+This stack contains 2 elements. If st is equal to stp, the stack is empty.
+
+After pushing 90 onto the stack:
+
+[90][34][90][3][0][0][0][0][0][0][0][0][0]
+^           ^
+st          stp
+
+
+
+The heap is more complex.
+
+A dictionary entry may look like this:
+
+[  23434][  0][][][][][][][][]  [23948][29830][2][100][1][8888888]
+^        ^    ^                 ^      ^      ^       ^
+link     mode name              word   word   vm num  vm prim 
+
+
+link: A pointer to the preceeding dictionary entry.
+mode: A bitwise representation of the various modes like immediate,
+      compile-only, and unseeable
+name: 32 bytes that represent the name of this word. The first byte
+      describes how many characters the name is. The following 31 bytes
+      contain the name itself. Notice that the maximum length of a name
+      is then 31 characters.
+word: These are pointers to words that should be executed when this
+      word is called.
+vm num: A virtual machine instruction that tells the program to push the
+        next element onto the stack, in this case 100.
+vm prim: Another virtual machine instruction that says to jump to
+         the next element for direct machine execution. In this case, the
+         code that exits the word. This should almost always terminate the
+         ending of the word. Note: One of the semicolon word's function is
+         to terminate the current definition with the exit VMI.
+
+
+So you can see how a dictionary entry looks. Here is how a full
+dictionary might look:
+
+
+[324][   0][.......][1004][.......][324][211][1188][.....]
+^    ^              ^              ^         ^
+heap entry 1        entry 2        random    entry 3
+
+
+heap: The start of the heap. Let's say it's address is 1000.
+      In this case the first element is 324. This bears no signifigance,
+      it just made it easier to draw. :)  It doesn't matter where the
+      first entry starts from the heap offsets. It could be 1, 10, or 0
+      elements in front of this pointer.
+entry 1: The first entry. It's address would be 1004. Notice
+         how the link is 0 (NULL), indicating that there are no previous
+         elements. The [...] represents the reset of the entry.
+entry 2: Another entry. Notice how this one's link points to 1004, the
+         previous element.
+random: Just some random elements put there to show you that dictionary
+        entries don't care what's between them. We can, and do, use this
+        to out advantage as you'll see later on.
+entry 3: Another dictionary entry. This one's link also points to the
+         previous entry. Since that depends on how long the first dictionary
+         entry was, let's just say it's 1188. Whatever.
+
+As an example, here's how you would count the number of words in the
+dictionary:
+
+: num-of-words ( -- n )
+  0 l begin @ swap 1+ swap dup 0= until drop ;
+
+
+
+EXECUTION
+~~~~~~~~~
+
+The virtual machine instructions:
+
+Here's a description of the VM instructions:
+
+0 - INVALID
+1 - VM_PRIMITIVE
+    Jump to the code referenced by the next cell and execute it as
+    machine instructions. More information on creating your own primitives
+    is available in the file docs/USING under the section "ADDING PRIMITIVES".
+2 - VM_NUMBER
+    Pushes the next cell onto the data stack. This is similar to
+    a literal in other Forths.
+3 - VM_BRANCH
+    Set the Instruction Pointer to equal the following cell.
+4 - VM_IFBRANCH
+    Pop a value off the data stack. If this value is non-zero, set the
+    Instruction Pointer to equal the following cell. If not, set it to
+    the cell after that.
+
+
+In the body of a definition, when an instruction is encountered that isn't
+one of the above, the procedure for dealing with it is as follows:
+
+Increment the ip by 1 cell.
+Push the current ip onto the return stack.
+Set the ip to the previous cell.
+Resume execution (which will be at the new IP).
+
+
+
+ALIGNMENT
+~~~~~~~~~
+
+Frugal will run on address aligned systems. It will only compile cells
+at a time, unless character strings are being compiled. The word "align"
+increases the heap pointer (heapp) until it is correctly address aligned.
+
+If you compile into the dictionary using c, or other other words that don't
+compile even cell-sized data, be sure you use the word "align" when done.
+
+
+
+THE THIRD STACK
+~~~~~~~~~~~~~~~
+
+Actually, internally there is one other stack, the file input stack.
+This is a small stack that keeps track of nested include" words, so
+you can include" files inside include"ed files inside inside include"ed
+file, and so on...
+
+This may be migrated to the return stack soon. Stay tuned.

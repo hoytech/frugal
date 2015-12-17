@@ -1,0 +1,53 @@
+Here are some programs and libraries for use with frugal:
+
+The rough format is  "name - description STATUS"
+
+STATUS can be any of these:
+
+MATURE:
+This program has been used so much that all of the obvious bugs have
+long since been flushed out. This program has extensive, clear
+documentation.
+
+STABLE:
+This program seems to work fine, most of the bugs should be out of the
+program. The program has been documented, and is ready for use.
+
+BETA TESTING:
+This program is probably ready for use, but more testing needs to
+be done before it can be consider STABLE. May not be fully documented yet.
+
+ALPHA TESTING:
+This program is mostly written, and some kind of functionality exists.
+Chances are this program has many bugs, and will need quite a bit of
+work before it becomes STABLE. It may have the beginnings of documentation.
+ 
+BEING DEVELOPED:
+This program is in development. Chances are that this program will NOT
+have any desired functionality. This program is not guaranteed to run
+or even compile. It may have tiny fragments of documentation here and there.
+
+
+
+arc4.fs - A cryptographically secure random number generator and stream
+          cipher. STABLE
+
+debug.fs - A flexible, powerful debugger for frugal code. See the file
+           DEBUG in the docs/ directory for info. STABLE
+
+httpd.fs - A small webserver written for frugal. BEING DEVELOPED
+
+infix.fs - A quick demonstration program to show that, yes, infix is
+           possible in forth. BETA TESTING
+
+locals.fs - Locals implementation for frugal. See the file LOCALS in the
+           docs/ directory for info. STABLE
+
+lookup.fs - A DNS lookup/reverse lookup program. STABLE
+
+namespaces.fs - Frugal implementation of namespaces. See the file
+                docs/NAMESPACES for more info. BETA TESTING
+
+pong.fs - A fun pong game. STABLE
+
+tea.fs - Tiny Encryption Algorithm by Robert Oestling. STABLE

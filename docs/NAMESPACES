@@ -1,0 +1,91 @@
+Frugal Forth's Namespaces
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A large drawback of traditional forths is that they only provide a single
+monolithic namespace. This is generally OK for small or trivial programs
+or programs that you've written completely from scratch, but falls apart
+quite quickly as complexity is added or code is adopted from many sources.
+
+Traditional forth systems sometimes provide different "vocabularies"
+for various namespaces, but these work quite differently from the frugal
+namespaces and are used for very different purposes. Frugal currently
+does not provide any vocabulary functionality for various reasons.
+
+Consider two forth source files that have identical names for a number of
+words. In traditional forth, you have exactly one option: Open up one of the
+source files and change the offending words.
+
+Other forths provide a word similar to frugal's "unlink" word, which will
+remove a word from the dictionary but leave it's executable code in place.
+In these forths, you can open up one of the source files and unlink
+the offending words (provided that these aren't the words you want other
+source files to use).
+
+Frugal forth now offers a better solution: Namespaces.
+
+In frugal, you can make use of namespaces by importing the namespaces
+code in progs/namespaces.fs like so:
+
+./frugal progs/namespaces.fs
+
+Or in your program:
+
+include" progs/namespaces.fs"
+
+
+In frugal, as in most forths, you start out with 1 "fundamental" namespace.
+This is the namespace you are probably familiar with. After importing
+the namespaces code, this functionality won't change.
+
+After importing the namespaces code, you gain 3 new words:
+
+namespace{,  export-name, and  }namespace.
+
+namespace{ opens up a new namespace and }namespace closes it. Any
+words defined inside this namespace will not be linked into the dictionary
+outside this namespace, unless it is exported with the export-name word.
+export-name will export the last defined word to outside the namespace.
+
+Namespaces CAN be nested. When a definition is exported, it is exported
+only to its parent's namespace.
+
+Namespaces can reference all the names defined in their parent's namespace
+(and their parent's parent's namespace and so on). This is the main
+difference between frugal's namespaces and C's namespaces. If you are
+familiar with lisp or scheme, however, these namespaces will feel very
+natural.
+
+If a word is defined in a namespace that exists in a parent namespace, all
+of the child's references will refer to that word, not the parent's word.
+
+
+Here is a simple example of namespace usage:
+
+variable a
+-5555 a !
+
+namespace{
+
+  variable a
+  100 a !
+
+  : local a ;
+  : tp local ? cr ; export-name
+
+}namespace
+
+
+This somewhat contrived example illustrates the main functionality of frugal's
+namespaces. Notice that local and the internal variable "a" are not available
+outside the namespace, where tp is.
+
+Often it may be useful to surround code with namespace{ and }namespace,
+and export only the words that you will be using in the parent namespace.
+
+This not only has the benefit of reducing potential name collisions
+and reducing namespace pollution, also of reducing dictionary lookup time
+because there are less words to look up.
+
+
+Doug Hoyte (Fractal)
+doug@hypervivid.com

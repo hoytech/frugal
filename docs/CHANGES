@@ -1,0 +1,41 @@
+1.0.0 -> 1.0.1
+~~~~~~~~~~~~~~
+-Used select() instead of poll() for greater portability - specifically
+ to compile on MacOS X.
+-Added MacOS X to docs/PORTABILITY
+-Add progs/infix.fs
+-Fixed bug in progs/debug.fs so that you can't debug> a primitive word.
+-Added the file progs/namespaces.fs and documented its usage in the file
+ docs/NAMESPACES
+-Cleaned up Makefile
+-Improved README
+
+
+0.9.9 -> 1.0.0
+~~~~~~~~~~~~~~
+-Changed bzero() to memset() in extprims.c
+-Made the CFLAGS variable in the Makefile customizable.
+-Got debug.fs to use head>
+-Added the "align" word so it runs on aligned archs - specifically SPARC.
+-Certified SPARC compatibility. :)
+-Added docs/TODO file.
+-Cleaned up progs/ directory.
+-Moved onetom's memory dump words into progs/debug.fs
+-Added the -cc switch to fgcc and documented it in docs/FGCC
+
+
+0.9.8 -> 0.9.9
+~~~~~~~~~~~~~~
+-A few minor doc fixes.
+-Added >head and head>, and used them where appropriate in init.fs
+-Added ;recurse  - Frugal's tail recursion word.
+-Added docs/ for the locals wordset in docs/LOCALS
+
+
+0.9.7 -> 0.9.8
+~~~~~~~~~~~~~~
+-Fixed endian issues reported by Herkamire.
+-Fixed arbitrary terminal settings reported by Herkamire.
+-Updated CREDITS
+-Added fgcc
+-Added docs/FGCC

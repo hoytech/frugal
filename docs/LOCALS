@@ -1,0 +1,48 @@
+The Frugal Locals Wordset
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Frugal's locals are not ANS compatible, but their usage is similar.
+
+The first thing you've got to do if you want to use locals in frugal
+is include the file progs/locals.fs  This will introduce several words into
+your dictionary, only one of which is important: {
+
+After you have included locals.fs (on the command line, or with the word
+include"), you may use them like so:
+
+: my-word { a b }  20 a ! 40 b !
+                   a @ b @ ;
+
+Essentially, inside the word my-word, you can treat both a and b as
+if they were any "ordinary" variables. After you are done defining
+the word (by calling ";"), the variable names will be removed from
+your dictionary.
+
+Notice that the variables are stored on the return stack, so do *not*
+access local variables declared outside a do loop within that do loop.
+
+
+This is OK:
+
+: some-word 10 0 do word-with-locals-in-it loop ;
+
+So is this:
+
+: my-word { var#1 var#2 var#3 }  100 var#2 !
+                   10 0 do i . loop
+                   var#2 ?  ;
+
+This is NOT OK:
+
+: my-word { a b } 100 a !
+                  10 0 do
+                    a .
+                  loop ;
+
+
+The variable names can be anything you like, but you may not use more than
+8 of them per word.
+
+In conclusion, I'd like to mention that I do not recommend local variables
+for general forth programming, but if you feel you need to use them, they
+are available here in frugal.
