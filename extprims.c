@@ -326,7 +326,7 @@ NEWPRIM(acceptconn) {
 /* ( listen_sock -- connection_sock ) */
 
   struct sockaddr_in their_addr;
-  int tp = sizeof(struct sockaddr_in);
+  socklen_t tp = sizeof(struct sockaddr_in);
   int listenfd,connfd;
 
   listenfd = pop();

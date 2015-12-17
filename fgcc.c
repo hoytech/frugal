@@ -97,7 +97,7 @@ void do_compile(char *tpfile) {
     else sprintf(tpcommand, "%s -o a.out -s -O2 %s", cc ? cc : "gcc", tpfile);
 
     printf("%s\n", tpcommand);
-    system(tpcommand);
+    if (system(tpcommand)) abort();
 
     remove(tpfile);
   }

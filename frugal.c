@@ -18,6 +18,8 @@
 #include <termios.h>
 #include <poll.h>
 #include <signal.h>
+#include <stdint.h>
+#include <string.h>
 
 
 #define INIT "init.fs"
@@ -44,7 +46,7 @@
 #define STATE_COMPILING 1
 
 /* Header info */
-#define HEADER_LEN 10
+#define HEADER_LEN ((32 / sizeof(intptr_t)) + 2)
 
 /* Virtual Machine Instructions */
 #define VM_PRIMITIVE 1
@@ -55,29 +57,29 @@
 jmp_buf hop_back;
 
 struct forth_instance {
-  int *st; /* Data stack base */
-  int *stp; /* Data stack pointer */
+  intptr_t *st; /* Data stack base */
+  intptr_t *stp; /* Data stack pointer */
 
-  int *rst; /* Return stack base */
-  int *rstp; /* Return stack pointer */
+  intptr_t *rst; /* Return stack base */
+  intptr_t *rstp; /* Return stack pointer */
 
   FILE **fst; /* File input stack base */
   FILE **fstp; /* File input stack pointer */
 
-  int *heap; /* Dict/heap base */
-  int *lastdictp; /* Pointer to last dict entry */
-  int *heapp; /* Dict/heap pointer */
+  intptr_t *heap; /* Dict/heap base */
+  intptr_t *lastdictp; /* Pointer to last dict entry */
+  intptr_t *heapp; /* Dict/heap pointer */
 
   char *parse; /* Parse buffer base */
   char *parsep; /* Parse buffer pointer */
-  int parsesize; /* Size of parse buffer */
+  size_t parsesize; /* Size of parse buffer */
 
   char *pad; /* Temporary string buffer */
 
   FILE *input;
   FILE *output;
 
-  int *ip; /* Interpretive Pointer (current execution location) */
+  intptr_t *ip; /* Interpretive Pointer (current execution location) */
   int base; /* Numeric base */
   int state; /* Compiling or interpreting */
 };
@@ -97,9 +99,9 @@ int iswhitespace(char tp) {
   return 0;
 }
 
-int dictentry_cmp(int *ent, char *name, int namelen) {
-  int len,i;
-  len = (int) *((char *) ent);
+intptr_t dictentry_cmp(intptr_t *ent, char *name, intptr_t namelen) {
+  intptr_t len,i;
+  len = (intptr_t) *((char *) ent);
   if (namelen != len) return 0;
   for (i=0; i<len; i++) if (name[i] != ((char *)ent)[i+1]) return 0;
   return 1;
@@ -107,11 +109,13 @@ int dictentry_cmp(int *ent, char *name, int namelen) {
 
 
 /* resp is whether or not the function should respond to errors */ 
-int *search_dict(struct forth_instance *fi, char *name, int len, int resp) {
+intptr_t *search_dict(struct forth_instance *fi, char *name, intptr_t len, intptr_t resp) {
 
-  int *tpdictp=fi->lastdictp;
+  intptr_t *tpdictp=fi->lastdictp;
 
-  while (tpdictp != NULL && (dictentry_cmp(tpdictp+2, name, len)==0)) tpdictp = (int *) *tpdictp;
+  while (tpdictp != NULL && (dictentry_cmp(tpdictp+2, name, len)==0)){
+ tpdictp = (intptr_t *) *tpdictp;
+}
 
   /* NOTE: name[len] is overwritten. Keep this in mind if you change it. */
   if (tpdictp == NULL) {
@@ -121,7 +125,7 @@ int *search_dict(struct forth_instance *fi, char *name, int len, int resp) {
         fprintf(fi->output, "UNABLE TO FIND WORD \"%s\".\n", name);
       error(fi);
     } else {
-      return (int) NULL;
+      return 0;
     }
   }
 
@@ -129,26 +133,26 @@ int *search_dict(struct forth_instance *fi, char *name, int len, int resp) {
 
 }
 
-void create_header(struct forth_instance *fi, int len, char *buf) {
+void create_header(struct forth_instance *fi, intptr_t len, char *buf) {
 
-  (fi->heapp)[0] = (int) fi->lastdictp;
+  (fi->heapp)[0] = (intptr_t) fi->lastdictp;
   (fi->heapp)[1] = 0;
   fi->lastdictp = fi->heapp;
   (fi->heapp)+=2;
 
   ((char *)(fi->heapp))[0] = (char) len;
   memcpy(((char *)fi->heapp)+1, buf, len > 31 ? 31 : len);
-  (fi->heapp)+=8;
+  (fi->heapp)+=HEADER_LEN-2;
 
 }
 
-void st_push(struct forth_instance *fi, int tp) {
+void st_push(struct forth_instance *fi, intptr_t tp) {
   /* FIXME: Preform overflow checking */
   (fi->stp)[0] = tp;
   (fi->stp)++;
 }
 
-int st_pop(struct forth_instance *fi) {
+intptr_t st_pop(struct forth_instance *fi) {
   if (fi->st == fi->stp) {
     if (fi->output) fprintf(fi->output, "STACK UNDERFLOW!\n");
     error(fi);
@@ -172,13 +176,13 @@ FILE *fst_pop(struct forth_instance *fi) {
   return *(fi->fstp);
 }
 
-void rst_push(struct forth_instance *fi, int tp) {
+void rst_push(struct forth_instance *fi, intptr_t tp) {
   /* FIXME: Preform overflow checking */
   (fi->rstp)[0] = tp;
   (fi->rstp)++;
 }
 
-int rst_pop(struct forth_instance *fi) {
+intptr_t rst_pop(struct forth_instance *fi) {
   if (fi->rst == fi->rstp) {
     if (fi->output) fprintf(fi->output, "RSTACK UNDERFLOW!\n");
     error(fi);
@@ -188,10 +192,10 @@ int rst_pop(struct forth_instance *fi) {
 }
 
 void exit_prim(struct forth_instance *fi) {
-  fi->ip = (int *) rst_pop(fi);
+  fi->ip = (intptr_t *) rst_pop(fi);
 }
 
-void start_exec(int *start_ip) {
+void start_exec(intptr_t *start_ip) {
 
   void (*tp)(struct forth_instance *);
 
@@ -205,10 +209,10 @@ void start_exec(int *start_ip) {
       ci->ip += 2;
       (*tp)(ci);
     } else if (*(ci->ip) == VM_BRANCH) {
-      ci->ip = (int *) *(ci->ip + 1);
+      ci->ip = (intptr_t *) *(ci->ip + 1);
     } else if (*(ci->ip) == VM_IFBRANCH) {
       if (st_pop(ci)) {
-        ci->ip = (int *) *(ci->ip + 1);
+        ci->ip = (intptr_t *) *(ci->ip + 1);
       } else {
         ci->ip += 2;
       }
@@ -216,8 +220,8 @@ void start_exec(int *start_ip) {
       st_push(ci, *(ci->ip + 1));
       ci->ip += 2;
     } else {
-      rst_push(ci, (int) (ci->ip + 1));
-      ci->ip = (int *) *(ci->ip);
+      rst_push(ci, (intptr_t) (ci->ip + 1));
+      ci->ip = (intptr_t *) *(ci->ip);
     }
 
   }
@@ -244,45 +248,45 @@ void ver(struct forth_instance *fi) {
 }
 
 void l(struct forth_instance *fi) {
-  st_push(fi, (int) &(fi->lastdictp));
+  st_push(fi, (intptr_t) &(fi->lastdictp));
 }
 
 void base(struct forth_instance *fi) {
-  st_push(fi, (int) &(fi->base));
+  st_push(fi, (intptr_t) &(fi->base));
 }
 
 void c_fetch(struct forth_instance *fi) {
-  st_push(fi, (int) *((char *) st_pop(fi)));
+  st_push(fi, (intptr_t) *((char *) st_pop(fi)));
 }
 
 void c_store(struct forth_instance *fi) {
-  int tp = st_pop(fi);
+  intptr_t tp = st_pop(fi);
   ((char *) tp)[0] = (char) st_pop(fi);
 }
 
 void c_comma(struct forth_instance *fi) {
   ((char *) fi->heapp)[0] = (char) st_pop(fi);
-  ((char *) fi->heapp)++;
+  fi->heapp = (intptr_t *) (((char *) fi->heapp)+1);
 }
 
 void align(struct forth_instance *fi) {
-  while (((int)(fi->heapp) % 4) != 0) ((char *)(fi->heapp))++;
+  while (((intptr_t)(fi->heapp) % 4) != 0) fi->heapp = (intptr_t *) (((char *) fi->heapp)+1);
 }
 
 void sp(struct forth_instance *fi) {
-  st_push(fi, (int) fi->stp);
+  st_push(fi, (intptr_t) fi->stp);
 }
 
 void rp(struct forth_instance *fi) {
-  st_push(fi, (int) (fi->rstp - 1));
+  st_push(fi, (intptr_t) (fi->rstp - 1));
 }
 
 void s0(struct forth_instance *fi) {
-  st_push(fi, (int) fi->st);
+  st_push(fi, (intptr_t) fi->st);
 }
 
 void r0(struct forth_instance *fi) {
-  st_push(fi, (int) fi->rst);
+  st_push(fi, (intptr_t) fi->rst);
 }
 
 void emit(struct forth_instance *fi) {
@@ -291,33 +295,33 @@ void emit(struct forth_instance *fi) {
 
 /* This is a faster DECIMAL ONLY version of printnum */
 void qpnum(struct forth_instance *fi) {
-  printf("%d", st_pop(fi));
+  printf("%ld", st_pop(fi));
 }
 
 void to_r(struct forth_instance *fi) {
-  int tp = rst_pop(fi);
+  intptr_t tp = rst_pop(fi);
   rst_push(fi, st_pop(fi));
   rst_push(fi, tp);
 }
 
 void r_to(struct forth_instance *fi) {
-  int tp = rst_pop(fi);
+  intptr_t tp = rst_pop(fi);
   st_push(fi, rst_pop(fi));
   rst_push(fi, tp);
 }
 
 void get_state(struct forth_instance *fi) {
-  st_push(fi, (int) &(fi->state));
+  st_push(fi, (intptr_t) &(fi->state));
 }
 
 void store(struct forth_instance *fi) {
-  int *tp;
-  tp = (int *) st_pop(fi);
+  intptr_t *tp;
+  tp = (intptr_t *) st_pop(fi);
   tp[0] = st_pop(fi);
 }
 
 void fetch(struct forth_instance *fi) {
-  st_push(fi, *((int *) st_pop(fi)));
+  st_push(fi, *((intptr_t *) st_pop(fi)));
 }
 
 void drop(struct forth_instance *fi) {
@@ -325,27 +329,27 @@ void drop(struct forth_instance *fi) {
 }
 
 void lshift(struct forth_instance *fi) {
-  int tp;
+  intptr_t tp;
   tp = st_pop(fi);
   st_push(fi, st_pop(fi) << tp);
 }
 
 void ulshift(struct forth_instance *fi) {
-  unsigned int tp;
-  tp = (unsigned int) st_pop(fi);
-  st_push(fi, (unsigned int)st_pop(fi) << tp);
+  uintptr_t tp;
+  tp = (uintptr_t) st_pop(fi);
+  st_push(fi, (uintptr_t)st_pop(fi) << tp);
 }
 
 void rshift(struct forth_instance *fi) {
-  int tp;
+  intptr_t tp;
   tp = st_pop(fi);
   st_push(fi, st_pop(fi) >> tp);
 }
 
 void urshift(struct forth_instance *fi) {
-  unsigned int tp;
-  tp = (unsigned int) st_pop(fi);
-  st_push(fi, (unsigned int)st_pop(fi) >> tp);
+  uintptr_t tp;
+  tp = (uintptr_t) st_pop(fi);
+  st_push(fi, (uintptr_t)st_pop(fi) >> tp);
 }
 
 void and(struct forth_instance *fi) {
@@ -361,7 +365,7 @@ void xor(struct forth_instance *fi) {
 }
 
 void pad(struct forth_instance *fi) {
-  st_push(fi, (int) fi->pad);
+  st_push(fi, (intptr_t) fi->pad);
 }
 
 void plus(struct forth_instance *fi) {
@@ -369,7 +373,7 @@ void plus(struct forth_instance *fi) {
 }
 
 void minus(struct forth_instance *fi) {
-  int tp = st_pop(fi);
+  intptr_t tp = st_pop(fi);
   st_push(fi, st_pop(fi) - tp);
 }
 
@@ -378,19 +382,19 @@ void mult(struct forth_instance *fi) {
 }
 
 void divide(struct forth_instance *fi) {
-  int tp;
+  intptr_t tp;
   tp = st_pop(fi);
   st_push(fi, st_pop(fi) / tp);
 }
 
 void mod(struct forth_instance *fi) {
-  int tp;
+  intptr_t tp;
   tp = st_pop(fi);
   st_push(fi, st_pop(fi) % tp);
 }
 
 void pick(struct forth_instance *fi) {
-  int tp;
+  intptr_t tp;
   tp = st_pop(fi);
   if (tp >= (fi->stp - fi->st)) {
     if (fi->output) fprintf(fi->output, "STACK UNDERFLOW!\n");
@@ -400,7 +404,7 @@ void pick(struct forth_instance *fi) {
 }
 
 void roll(struct forth_instance *fi) {
-  int top, num, i;
+  intptr_t top, num, i;
   num = st_pop(fi);
   if (num < 1) return;
   if (num > (fi->stp - fi->st - 1)) {
@@ -421,7 +425,11 @@ void compile_only(struct forth_instance *fi) {
 }
 
 void h(struct forth_instance *fi) { 
-  st_push(fi, (int) &(fi->heapp));
+  st_push(fi, (intptr_t) &(fi->heapp));
+}
+
+void cell_bytes(struct forth_instance *fi) { 
+  st_push(fi, (intptr_t) sizeof(intptr_t));
 }
 
 void to_in(struct forth_instance *fi) { 
@@ -429,18 +437,18 @@ void to_in(struct forth_instance *fi) {
 }
 
 void source(struct forth_instance *fi) {
-  st_push(fi, (int) (fi->parse));
+  st_push(fi, (intptr_t) (fi->parse));
   st_push(fi, strlen(fi->parse));
 }
 
 void lessthan(struct forth_instance *fi) { 
-  int tp;
+  intptr_t tp;
   tp = st_pop(fi);
   st_push(fi, st_pop(fi) < tp);
 }
 
 void greaterthan(struct forth_instance *fi) { 
-  int tp;
+  intptr_t tp;
   tp = st_pop(fi);
   st_push(fi, st_pop(fi) > tp);
 }
@@ -450,7 +458,7 @@ void equal(struct forth_instance *fi) {
 }
 
 void reset(struct forth_instance *fi) {
-  fi->ip = (int *) rst_pop(fi);
+  fi->ip = (intptr_t *) rst_pop(fi);
   fi->stp = fi->st;
   fi->rstp = fi->rst;
   fi->state = STATE_INTERPRETING;
@@ -462,27 +470,27 @@ void comma(struct forth_instance *fi) {
 }
 
 void exit_word(struct forth_instance *fi) {
-  st_push(fi, (int) &exit_prim);
+  st_push(fi, (intptr_t) &exit_prim);
   st_push(fi, VM_PRIMITIVE);
   comma(fi);
   comma(fi);
 }
 
 void parse(struct forth_instance *fi) {
-  int len=0;
+  intptr_t len=0;
   char delim = (char) st_pop(fi);
 
   if (delim == ' ') {
     while (iswhitespace(*(fi->parsep))) (fi->parsep)++;
-    st_push(fi, (int) (fi->parsep));
+    st_push(fi, (intptr_t) (fi->parsep));
     while (!iswhitespace(*(fi->parsep)) && *(fi->parsep)) { (fi->parsep)++; len++; }
   } else if (delim == '\n') {
-    st_push(fi, (int) (fi->parsep));
+    st_push(fi, (intptr_t) (fi->parsep));
     len = strlen(fi->parsep);
     fi->parsep += len;
   } else {
     (fi->parsep)++;
-    st_push(fi, (int) (fi->parsep));
+    st_push(fi, (intptr_t) (fi->parsep));
     while (*(fi->parsep) != delim && *(fi->parsep)) { (fi->parsep)++; len++; }
 
     if (*(fi->parsep) == '\0') {
@@ -501,7 +509,7 @@ void parse(struct forth_instance *fi) {
 void include_quote(struct forth_instance *fi) {
 
   char backup;
-  int len;
+  intptr_t len;
   char *name;
 
   st_push(fi, '"');
@@ -526,7 +534,7 @@ void include_quote(struct forth_instance *fi) {
 
 
 void create_addr(struct forth_instance *fi) {
-  int len;
+  intptr_t len;
 
   len = st_pop(fi);
   create_header(fi, len, (char *) st_pop(fi));
@@ -534,14 +542,13 @@ void create_addr(struct forth_instance *fi) {
 
 
 void create(struct forth_instance *fi) {
-  st_push(fi, (int) ' ');
+  st_push(fi, (intptr_t) ' ');
   parse(fi);
   create_addr(fi);
 }
 
 
 void colon(struct forth_instance *fi) {
-
   if (fi->state == STATE_COMPILING) {
     if(fi->output) fprintf(fi->output, "CAN'T NEST COLON DEFINITIONS\n");
     error(fi);
@@ -566,34 +573,34 @@ void semicolon(struct forth_instance *fi) {
 
 void tick_addr(struct forth_instance *fi) {
 
-  int len;
+  intptr_t len;
   char *name;
 
   len = st_pop(fi);
   name = (char *) st_pop(fi);
 
-  st_push(fi, (int) search_dict(fi, name, len, 1));
+  st_push(fi, (intptr_t) search_dict(fi, name, len, 1));
   
 }
 
 
 void tick(struct forth_instance *fi) {
 
-  st_push(fi, (int) ' ');
+  st_push(fi, (intptr_t) ' ');
   parse(fi);
 
   tick_addr(fi);
 
 }
 
-int my_isdigit(char tp, struct forth_instance *fi) {
+intptr_t my_isdigit(char tp, struct forth_instance *fi) {
   if (tp>='0' && tp<=('0'+fi->base-1)) return tp-'0';
   if (fi->base > 10 && tp>='a' && tp<='a'+fi->base-11) return tp-'a'+10;
   return -1;
 }
 
-int my_atoi(char *tp, struct forth_instance *fi) {
-  int i,count=0,sign=1;
+intptr_t my_atoi(char *tp, struct forth_instance *fi) {
+  intptr_t i,count=0,sign=1;
   if (tp[0] == '-') { sign=-1; tp++; }
   for(i=0; !iswhitespace(tp[i]); i++) {
     count*=fi->base;
@@ -603,15 +610,15 @@ int my_atoi(char *tp, struct forth_instance *fi) {
 }
 
 void number(struct forth_instance *fi) {
-  int len,i=0;
+  intptr_t i=0;
   char *name;
 
-  len = st_pop(fi);
+  (void) st_pop(fi);
   name = (char *) st_pop(fi);
 
-  if (name[0] == '-' && my_isdigit((int)name[1], fi)!=-1) i = 2;
+  if (name[0] == '-' && my_isdigit((intptr_t)name[1], fi)!=-1) i = 2;
   while(!iswhitespace(name[i]) && name[i] != '\0') {
-    if (my_isdigit((int)name[i], fi) == -1) {
+    if (my_isdigit((intptr_t)name[i], fi) == -1) {
       st_push(fi, 0);
       return;
     }
@@ -642,8 +649,8 @@ void query(struct forth_instance *fi) {
 void interpret(struct forth_instance *fi) {
 
   char *name;
-  int len,i=0;
-  int *addr;
+  intptr_t len,i=0;
+  intptr_t *addr;
 
   while(iswhitespace(*(fi->parsep))) fi->parsep++;
   if (*(fi->parsep) == 0) return;
@@ -655,7 +662,7 @@ void interpret(struct forth_instance *fi) {
   name = (char *) st_pop(fi);
 
   if ((addr = search_dict(fi, name, len, 0)) == NULL) {
-    st_push(fi, (int) name);
+    st_push(fi, (intptr_t) name);
     st_push(fi, len);
     number(fi);
     if (st_pop(fi)) {
@@ -672,19 +679,19 @@ void interpret(struct forth_instance *fi) {
       fprintf(fi->output, "UNABLE TO FIND WORD \"%s\".\n", name);
     error(fi);
   } else {
-    st_push(fi, (int) addr);
-    st_push(fi, (int) addr);
+    st_push(fi, (intptr_t) addr);
+    st_push(fi, (intptr_t) addr);
     if (fi->state == STATE_INTERPRETING) {
-      if (*((int *)st_pop(fi) - 9) & COMPILE_ONLY) {
+      if (*((intptr_t *)st_pop(fi) - HEADER_LEN + 1) & COMPILE_ONLY) {
         while(!iswhitespace(name[i])) i++;
           name[i] = '\0';
         if (fi->output) fprintf(fi->output, "YOU TRIED TO EXECUTE A COMPILE-ONLY WORD: \"%s\".\n", name);
         error(fi);
       }
-      fi->ip = (int *) st_pop(fi);
+      fi->ip = (intptr_t *) st_pop(fi);
     } else if (fi->state == STATE_COMPILING) {
-      if (*((int *)st_pop(fi) - 9) & IMMEDIATE) {
-        fi->ip = (int *) st_pop(fi);
+      if (*((intptr_t *)st_pop(fi) - HEADER_LEN + 1) & IMMEDIATE) {
+        fi->ip = (intptr_t *) st_pop(fi);
       } else {
         comma(fi);
       }
@@ -706,7 +713,7 @@ void reg_prim(struct forth_instance *fi, char *name, void (*func)(struct forth_i
   create_header(fi, strlen(name), name);
   st_push(fi, VM_PRIMITIVE);
   comma(fi);
-  st_push(fi, (int) func);
+  st_push(fi, (intptr_t) func);
   comma(fi);
 
   semicolon(fi);
@@ -719,12 +726,12 @@ void reg_prim(struct forth_instance *fi, char *name, void (*func)(struct forth_i
 
 void init_forth(struct forth_instance *fi) {
 
-  fi->rst = fi->rstp = (int *) malloc(sizeof(int) * 1000);
+  fi->rst = fi->rstp = (intptr_t *) malloc(sizeof(intptr_t) * 1000);
   fi->parse = fi->parsep = (char *) malloc(4000);
   fi->parsesize = 4000;
-  fi->st = fi->stp = (int *) malloc(sizeof(int) * 1000);
-  fi->fst = fi->fstp = (FILE **) malloc(sizeof(int) * 100);
-  fi->heap = fi->heapp = (int *) malloc(sizeof(int) * 10000);
+  fi->st = fi->stp = (intptr_t *) malloc(sizeof(intptr_t) * 1000);
+  fi->fst = fi->fstp = (FILE **) malloc(sizeof(intptr_t) * 100);
+  fi->heap = fi->heapp = (intptr_t *) malloc(sizeof(intptr_t) * 10000);
   fi->lastdictp = NULL;
   /* Make sure the numbers on the following 2 lines are the same */
   fi->pad = (char *) malloc(1000);
@@ -743,6 +750,7 @@ void init_forth(struct forth_instance *fi) {
     reg_prim(fi, "interpret", &interpret);
     reg_prim(fi, "query", &query);
     reg_prim(fi, "h", &h);
+    reg_prim(fi, "cell-bytes", &cell_bytes);
     reg_prim(fi, "immediate", &immediate);
     reg_prim(fi, "compile-only", &compile_only);
     reg_prim(fi, "reset", &reset);
@@ -811,21 +819,21 @@ void init_forth(struct forth_instance *fi) {
 		    again ;
     */
     create_header(fi, 4, "quit");
-    st_push(fi, (int) search_dict(fi, "reset", 5, 1)); comma(fi);
-    st_push(fi, (int) fi->heapp);
-    st_push(fi, (int) search_dict(fi, "query", 5, 1)); comma(fi);
-    st_push(fi, (int) fi->heapp);
-    st_push(fi, (int) search_dict(fi, "interpret", 9, 1)); comma(fi);
-    st_push(fi, (int) search_dict(fi, ">in", 3, 1)); comma(fi);
+    st_push(fi, (intptr_t) search_dict(fi, "reset", 5, 1)); comma(fi);
+    st_push(fi, (intptr_t) fi->heapp);
+    st_push(fi, (intptr_t) search_dict(fi, "query", 5, 1)); comma(fi);
+    st_push(fi, (intptr_t) fi->heapp);
+    st_push(fi, (intptr_t) search_dict(fi, "interpret", 9, 1)); comma(fi);
+    st_push(fi, (intptr_t) search_dict(fi, ">in", 3, 1)); comma(fi);
     st_push(fi, VM_NUMBER); comma(fi);
     st_push(fi, 0); comma(fi);
-    st_push(fi, (int) search_dict(fi, ">", 1, 1)); comma(fi);
+    st_push(fi, (intptr_t) search_dict(fi, ">", 1, 1)); comma(fi);
     st_push(fi, VM_IFBRANCH); comma(fi);
     comma(fi);
     st_push(fi, VM_BRANCH); comma(fi);
     comma(fi);
     st_push(fi, VM_PRIMITIVE); comma(fi); /* So we can "see" the word */
-    st_push(fi, (int) &exit_word); comma(fi);
+    st_push(fi, (intptr_t) &exit_word); comma(fi);
 
 }
 
@@ -843,7 +851,7 @@ void openfilestream(struct forth_instance *fi, char *fname) {
 
 #ifdef INTERNAL_CODE
 void procinternal_code(struct forth_instance *fi) {
-  int i, curr=0, depth=0, pfds[2];
+  intptr_t i, curr=0, depth=0, pfds[2];
 
   pipe(pfds);
   fcntl(pfds[1], F_SETFL, O_NONBLOCK);
@@ -852,13 +860,13 @@ void procinternal_code(struct forth_instance *fi) {
     if (write(pfds[1], internal_code[curr], strlen(internal_code[curr]))==-1) {
       depth++;
       close(pfds[1]);
-      st_push(fi, (int) fdopen(pfds[0], "r"));
+      st_push(fi, (intptr_t) fdopen(pfds[0], "r"));
       pipe(pfds);
       fcntl(pfds[1], F_SETFL, O_NONBLOCK);
     }
     curr++;
   }
-  st_push(fi, (int) fdopen(pfds[0], "r"));
+  st_push(fi, (intptr_t) fdopen(pfds[0], "r"));
   close(pfds[1]);
 
   fst_push(fi, fi->input);
@@ -886,8 +894,8 @@ int main (int argc, char *argv[]) {
 
   for(i=argc-1; i>0; i--) {
     if (*(argv[i]) == '-') {
-      pipe(desc);
-      write(desc[1], argv[i]+1, strlen(argv[i]+1));
+      if (pipe(desc)) abort();
+      if (write(desc[1], argv[i]+1, strlen(argv[i]+1)) != strlen(argv[i]+1)) abort();
       close(desc[1]);
       fst_push(ci, ci->input);
       ci->input = fdopen(desc[0], "r");

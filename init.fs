@@ -43,12 +43,12 @@
 : allot h @ + h ! ;
 : constant create 2 ( Hardwired VM_NUMBER ) , , compile-exit ;
 : const constant ;
-: var 32 parse create-addr here 16 + dup 2 ( Hardwired VM_NUMBER ) , ,
+: var 32 parse create-addr here cell-bytes 4 * + dup 2 ( Hardwired VM_NUMBER ) , ,
       compile-exit 0 ,  ! ;
 : variable 0 var ;
 : 2variable variable 0 , ;
-: cell+ 4 + ;
-: cells 4 * ;
+: cell+ cell-bytes + ;
+: cells cell-bytes * ;
 : char+ 1 + ;
 : chars ;
 : 2! swap over ! cell+ ! ;
@@ -72,7 +72,7 @@
 3 constant VM_BRANCH
 4 constant VM_IFBRANCH
 
-10 constant HEADER_LEN
+32 cell-bytes / 2 + constant HEADER_LEN
 
 0 constant 0
 1 constant 1
