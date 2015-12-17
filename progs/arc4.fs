@@ -7,8 +7,7 @@
 \ Written for the frugal forth system: www.hcsw.org/frugal/
 
 \ (C) 2002 by HardCore SoftWare  -  www.hcsw.org
-\ Distribution and modification privileges granted according to
-\ the GNU GPL. See www.gnu.org for details.
+\ 2-clause BSD license.
 
 
 \ Cipher usage:

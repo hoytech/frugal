@@ -1,8 +1,7 @@
 \ This is the frugal forth's powerful debugger.
 
 \ It is (C) 2002 by Doug Hoyte and HardCore SoftWare.
-\ Your rights to modify and use this program are protected
-\ under the GNU GPL. See www.gnu.org or the file COPYING for details.
+\ 2-clause BSD license.
 
 \ For usage information, see the file DEBUG in the docs/ directory
 \ of the frugal distribution.

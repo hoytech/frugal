@@ -1,5 +1,7 @@
 \ DOUG'S PONG FOR FRUGAL
 
+\ 2-clause BSD license.
+
 10 const padwidth
 padwidth 2/ const padwidth/2
 10 const termvel

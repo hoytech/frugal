@@ -1,6 +1,6 @@
 \ This is frugal's not-quite-ANS-compatible locals implementation.
-\ It is copyright (C) 2002, by HardCore SoftWare, and is distributed
-\ under the GNU GPL like the rest of frugal.
+\ It is copyright (C) 2002, by HardCore SoftWare.
+\ 2-clause BSD license.
 
 \ See the file docs/LOCALS for more info
 
