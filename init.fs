@@ -8,9 +8,6 @@
 \ These are the FORTH words that aren't defined in the core, but they
 \ are essential language elements.
 
-\ This program is Copyright 2002 by HardCore SoftWare.
-\ See the file COPYING for details, or visit www.gnu.org
-
 
 \ ---------------------- FUNDAMENTALS
 : dup 0 pick ;

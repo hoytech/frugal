@@ -1,8 +1,4 @@
 /* This is the Frugal GCC Wrapper Program. See docs/FGCC for details.
-
-   This program is Copyright 2002 by HardCore Software, and it's
-   distribution is protected by the GNU General Public License.
-   See the file COPYING for details.
 */
 
 
